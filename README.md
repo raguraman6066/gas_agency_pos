@@ -19,19 +19,9 @@ The local repository seeds 30 customers, 5 products, 40 orders, deliveries, stoc
 
 ## Supabase setup
 
-1. Create a Supabase project and apply [`supabase/migrations/202611240001_initial_schema.sql`](./supabase/migrations/202611240001_initial_schema.sql).
-2. Create an Auth user for the initial administrator in the Supabase dashboard.
-3. Link that account to the administrator profile using the SQL editor, substituting the account email:
-
-   ```sql
-   insert into public.profiles (auth_user_id, full_name, email, role)
-   select id, 'Agency Admin', email, 'Admin'
-   from auth.users
-   where email = 'admin@example.com'
-   on conflict (email) do update
-     set auth_user_id = excluded.auth_user_id, role = 'Admin', active = true;
-   ```
-
+1. Apply [`supabase/migrations/202611240001_initial_schema.sql`](./supabase/migrations/202611240001_initial_schema.sql) in the Supabase SQL Editor.
+2. Create and confirm an Auth user for the administrator. The demo seed currently targets `admin@gmail.com`; edit that email in [`supabase/seed_demo.sql`](./supabase/seed_demo.sql) if using another account.
+3. Run [`supabase/seed_demo.sql`](./supabase/seed_demo.sql) in the SQL Editor. It links the admin Auth account, inserts 30 sample customers, 5 products, 40 orders, 3 assignable staff profiles, deliveries, stock history and manual payments. It can be re-run for the seeded IDs, but resets demo order and stock values; use only in a demo project.
 4. Run the app with your project URL and publishable key:
 
    ```powershell
@@ -41,21 +31,7 @@ The local repository seeds 30 customers, 5 products, 40 orders, deliveries, stoc
    ```
 
    The Supabase publishable/anon key is intended for client applications; never put a `service_role` key in Flutter Web.
-5. Add initial products and stock after signing in. To enable a staff member, create or invite their account in Supabase Auth, then add a matching active staff profile in the app. A profile alone does not create an Auth account.
-
-For `admin@gmail.com`, link the existing Auth account to the agency admin profile in the Supabase SQL Editor:
-
-```sql
-insert into public.profiles (auth_user_id, full_name, email, phone, role, active)
-select id, 'Agency Admin', email, '', 'Admin', true
-from auth.users
-where email = 'admin@gmail.com'
-on conflict (email) do update
-set auth_user_id = excluded.auth_user_id,
-    role = 'Admin',
-    active = true,
-    updated_at = now();
-```
+5. The seeded staff profiles can be assigned deliveries. To give a staff member login access, also create/confirm their account in Supabase Auth with the same email. A profile alone is not an Auth account.
 
 The app selects Supabase only when both compile-time values are set; otherwise it uses the dummy repository. Both implementations share `AgencyRepository`, leaving presentation and state management unchanged. Supabase order creation, editing/cancellation, delivery completion, payments and stock adjustments use database functions so related updates execute atomically. RLS is enabled on all application tables; database permissions are authoritative, with UI restrictions as a usability layer.
 

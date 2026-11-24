@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/agency_repository.dart';
 import 'domain/models.dart';
+import 'utils/error_messages.dart';
 
 final agencyRepositoryProvider = Provider<AgencyRepository>((ref) {
   throw StateError('Agency repository has not been configured.');
@@ -90,7 +91,7 @@ class AgencyController extends Notifier<AgencyState> {
         clearUser: member == null,
       );
     } catch (error) {
-      state = state.copyWith(loading: false, error: error.toString());
+      state = state.copyWith(loading: false, error: userFriendlyError(error));
     }
   }
 
@@ -102,7 +103,7 @@ class AgencyController extends Notifier<AgencyState> {
         snapshot: await _repository.load(),
       );
     } catch (error) {
-      state = state.copyWith(loading: false, error: error.toString());
+      state = state.copyWith(loading: false, error: userFriendlyError(error));
     }
   }
 

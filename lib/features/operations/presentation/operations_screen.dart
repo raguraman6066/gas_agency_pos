@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/domain/models.dart';
 import '../../../core/presentation/common_widgets.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/error_messages.dart';
 
 class OperationsScreen extends ConsumerStatefulWidget {
   const OperationsScreen({required this.module, super.key});
@@ -803,7 +804,7 @@ class _OperationsScreenState extends ConsumerState<OperationsScreen> {
       if (mounted) _message('Changes saved.');
     } catch (error) {
       if (mounted) {
-        _message(error.toString().replaceFirst('Bad state: ', ''), error: true);
+        _message(userFriendlyError(error), error: true);
       }
     }
   }
@@ -877,10 +878,7 @@ class _OperationsScreenState extends ConsumerState<OperationsScreen> {
                       } catch (exception) {
                         setDialogState(() {
                           saving = false;
-                          error = exception.toString().replaceFirst(
-                            'Bad state: ',
-                            '',
-                          );
+                          error = userFriendlyError(exception);
                         });
                       }
                     },

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/domain/models.dart';
 import '../../../core/presentation/common_widgets.dart';
 import '../../../core/providers.dart';
+import '../../../core/utils/error_messages.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -16,7 +17,11 @@ class DashboardScreen extends ConsumerWidget {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.error != null && state.customerList.isEmpty) {
-      return Center(child: Text('Could not load agency data: ${state.error}'));
+      return Center(
+        child: Text(
+          'Could not load agency data: ${userFriendlyError(state.error!)}',
+        ),
+      );
     }
     final now = DateTime.now();
     bool today(DateTime date) =>

@@ -28,9 +28,8 @@ class SupabaseAgencyRepository implements AgencyRepository {
     ]);
     final orders = (results[2] as List).map((row) {
       final order = Map<String, dynamic>.from(row as Map);
-      final items = order.remove('order_items') as List? ?? const [];
-      if (items.isNotEmpty) {
-        final item = Map<String, dynamic>.from(items.first as Map);
+      final item = _firstOrderItem(order.remove('order_items'));
+      if (item != null) {
         order['product_id'] = item['product_id'];
         order['quantity'] = item['quantity'];
         order['unit_price'] = item['unit_price'];
@@ -187,29 +186,30 @@ class SupabaseAgencyRepository implements AgencyRepository {
 
   @override
   Future<void> signIn(String email, String password) async {
-    await _client.auth.signInWithPassword(email: email, password: password);
-    final profile = await _client
-        .from('profiles')
-        .select('active')
-        .ilike('email', email)
-        .maybeSingle();
+    final response = await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+    final user = response.user;
+    if (user == null) {
+      throw StateError('Supabase did not return a signed-in user.');
+    }
+    final profile = await _profileForUser(user.id, user.email ?? email);
     if (profile == null || profile['active'] != true) {
       await _client.auth.signOut();
       throw StateError(
-        'This account does not have an active agency staff profile.',
+        'Your password was accepted, but this account is not linked to an '
+        'active agency staff profile. Ask an administrator to run the demo '
+        'setup SQL for this exact Auth email, then sign in again.',
       );
     }
   }
 
   @override
   Future<StaffMember?> restoreSession() async {
-    final email = _client.auth.currentUser?.email;
-    if (email == null) return null;
-    final profile = await _client
-        .from('profiles')
-        .select()
-        .ilike('email', email)
-        .maybeSingle();
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+    final profile = await _profileForUser(user.id, user.email ?? '');
     if (profile == null || profile['active'] != true) {
       await _client.auth.signOut();
       return null;
@@ -217,8 +217,38 @@ class SupabaseAgencyRepository implements AgencyRepository {
     return StaffMember.fromMap(Map<String, dynamic>.from(profile));
   }
 
+  Future<Map<String, dynamic>?> _profileForUser(
+    String authUserId,
+    String email,
+  ) async {
+    final byAuthId = await _client
+        .from('profiles')
+        .select()
+        .eq('auth_user_id', authUserId)
+        .maybeSingle();
+    if (byAuthId != null) return Map<String, dynamic>.from(byAuthId);
+    if (email.isEmpty) return null;
+    final byEmail = await _client
+        .from('profiles')
+        .select()
+        .ilike('email', email)
+        .maybeSingle();
+    return byEmail == null ? null : Map<String, dynamic>.from(byEmail);
+  }
+
   @override
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
+}
+
+Map<String, dynamic>? _firstOrderItem(Object? relation) {
+  if (relation is Map) return Map<String, dynamic>.from(relation);
+  if (relation is List && relation.isNotEmpty) {
+    final item = relation.first;
+    if (item is Map) return Map<String, dynamic>.from(item);
+    throw const FormatException('Order item response was not an object.');
+  }
+  if (relation == null || relation is List) return null;
+  throw const FormatException('Order item response had an unexpected format.');
 }
