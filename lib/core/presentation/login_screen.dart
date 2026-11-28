@@ -98,12 +98,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'BlueFlame',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 21,
-                              fontWeight: FontWeight.w700,
+                          const Expanded(
+                            child: Text(
+                              'Kathiravan Gas Agency',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
@@ -143,7 +147,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: TextStyle(
                           color: Color(0xFF8DA3BC),
                           letterSpacing: 1.4,
-                          fontSize: 10,
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -184,14 +188,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           'Sign in to manage your gas agency.',
                           style: TextStyle(
                             color: Color(0xFF778397),
-                            fontSize: 13,
+                            fontSize: 14,
                           ),
                         ),
                         const SizedBox(height: 32),
                         const Text(
                           'Email address',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -212,7 +216,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const Text(
                           'Password',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -249,7 +253,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             _error!,
                             style: const TextStyle(
                               color: Color(0xFFB42318),
-                              fontSize: 12,
+                              fontSize: 14,
                             ),
                           ),
                         ],
@@ -279,7 +283,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : 'Demo: admin@gasagency.demo  ·  demo123',
                             style: const TextStyle(
                               color: Color(0xFF8995A6),
-                              fontSize: 11,
+                              fontSize: 13,
                             ),
                             textAlign: TextAlign.center,
                           ),

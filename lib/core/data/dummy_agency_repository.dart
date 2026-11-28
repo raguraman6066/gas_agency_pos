@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:uuid/uuid.dart';
 
 import '../domain/models.dart';
@@ -19,10 +17,17 @@ class DummyAgencyRepository implements AgencyRepository {
   late List<Payment> _payments;
   late List<StaffMember> _staff;
   late List<InventoryMovement> _movements;
-  int _nextOrder = 1041;
+  int _nextOrder = 1003;
+  AgencySettings _settings = const AgencySettings();
+
+  @override
+  Future<void> saveSettings(AgencySettings settings) async {
+    _settings = settings;
+  }
 
   @override
   Future<AgencySnapshot> load() async => AgencySnapshot(
+    settings: _settings,
     customers: List.unmodifiable(_customers),
     products: List.unmodifiable(_products),
     orders: List.unmodifiable(_orders),
@@ -49,245 +54,123 @@ class DummyAgencyRepository implements AgencyRepository {
         sizeKg: 19,
         price: 1680,
       ),
-      Product(
-        id: 'p3',
-        name: 'Small LPG',
+    ];
+    final customerSince = now.subtract(const Duration(days: 30));
+    _customers = [
+      Customer(
+        id: 'c1',
+        name: 'Aarav Sharma',
+        consumerNumber: 'CN-24001',
+        phone: '9810000000',
+        address: '12 Central Main Road',
+        area: 'Central',
+        createdAt: customerSince,
         type: 'Domestic',
-        sizeKg: 5,
-        price: 420,
       ),
-      Product(
-        id: 'p4',
-        name: 'Commercial LPG XL',
+      Customer(
+        id: 'c2',
+        name: 'Ananya Reddy',
+        consumerNumber: 'CN-24002',
+        phone: '9810017391',
+        address: '13 North Park Main Road',
+        area: 'North Park',
+        createdAt: customerSince,
         type: 'Commercial',
-        sizeKg: 47,
-        price: 3920,
-      ),
-      Product(
-        id: 'p5',
-        name: 'Domestic LPG 14.2 kg',
-        type: 'Domestic',
-        sizeKg: 14,
-        price: 1010,
       ),
     ];
-    const firstNames = [
-      'Aarav',
-      'Ananya',
-      'Vijay',
-      'Priya',
-      'Rahul',
-      'Meera',
-      'Arjun',
-      'Kavya',
-      'Rohan',
-      'Divya',
-    ];
-    const lastNames = [
-      'Sharma',
-      'Patel',
-      'Kumar',
-      'Reddy',
-      'Nair',
-      'Singh',
-      'Joshi',
-      'Iyer',
-      'Das',
-      'Gupta',
-    ];
-    const areas = [
-      'Central',
-      'North Park',
-      'Lake View',
-      'Market Road',
-      'Green Valley',
-      'Old Town',
-    ];
-    _customers = List.generate(30, (i) {
-      final name =
-          '${firstNames[i % firstNames.length]} ${lastNames[(i * 3) % lastNames.length]}';
-      return Customer(
-        id: 'c${i + 1}',
-        name: name,
-        consumerNumber: 'CN-${24001 + i}',
-        phone: '98${(10000000 + i * 17391).toString().substring(0, 8)}',
-        alternativePhone: i % 3 == 0
-            ? '97${(10000000 + i * 10111).toString().substring(0, 8)}'
-            : '',
-        address: '${12 + i} ${areas[i % areas.length]} Main Road',
-        area: areas[i % areas.length],
-        createdAt: now.subtract(Duration(days: 60 + i)),
-      );
-    });
-    _staff = const [
-      StaffMember(
+    _staff = [
+      const StaffMember(
         id: 's1',
         name: 'Anil Kumar',
         email: 'admin@gasagency.demo',
         phone: '9876500001',
         role: 'Admin',
       ),
-      StaffMember(
+      const StaffMember(
         id: 's2',
         name: 'Suresh Rao',
         email: 'staff@gasagency.demo',
         phone: '9876500002',
         role: 'Staff',
       ),
-      StaffMember(
-        id: 's3',
-        name: 'Kiran Das',
-        email: 'kiran@gasagency.demo',
-        phone: '9876500003',
-        role: 'Staff',
+    ];
+    final pending = AgencyOrder(
+      id: 'o1',
+      number: 'GA-1001',
+      customerId: 'c1',
+      productId: 'p1',
+      quantity: 2,
+      unitPrice: _products[0].price,
+      status: 'Ready for Delivery',
+      createdAt: now,
+      notes: 'Please call before delivery',
+    );
+    final delivered = AgencyOrder(
+      id: 'o2',
+      number: 'GA-1002',
+      customerId: 'c2',
+      productId: 'p2',
+      quantity: 3,
+      unitPrice: _products[1].price,
+      status: 'Delivered',
+      createdAt: now,
+    );
+    _orders = [pending, delivered];
+    _deliveries = [
+      Delivery(
+        id: 'd1',
+        orderId: pending.id,
+        status: 'Pending',
+        createdAt: now,
+      ),
+      Delivery(
+        id: 'd2',
+        orderId: delivered.id,
+        status: 'Delivered',
+        staffId: 's2',
+        createdAt: now,
+        deliveredAt: now,
+        deliveredQuantity: delivered.quantity,
+        returnedEmpty: 1,
+        damagedEmpty: 1,
       ),
     ];
     _inventory = [
-      const Inventory(
-        productId: 'p1',
-        filled: 58,
-        empty: 21,
-        booked: 5,
-        minimum: 12,
+      Inventory(
+        productId: pending.productId,
+        filled: 12,
+        empty: 4,
+        booked: pending.quantity,
       ),
-      const Inventory(
-        productId: 'p2',
-        filled: 24,
-        empty: 9,
-        booked: 3,
-        minimum: 8,
-      ),
-      const Inventory(
-        productId: 'p3',
-        filled: 36,
-        empty: 14,
-        booked: 4,
-        minimum: 10,
-      ),
-      const Inventory(
-        productId: 'p4',
-        filled: 8,
-        empty: 5,
-        booked: 1,
-        minimum: 5,
-      ),
-      const Inventory(
-        productId: 'p5',
-        filled: 42,
-        empty: 18,
-        booked: 4,
-        minimum: 12,
+      Inventory(
+        productId: delivered.productId,
+        filled: 7,
+        empty: 3,
+        damaged: 1,
+        delivered: delivered.quantity,
       ),
     ];
-    final random = Random(31);
-    _orders = List.generate(40, (i) {
-      final product = _products[i % _products.length];
-      final status = i < 8
-          ? 'Pending'
-          : i < 12
-          ? 'Confirmed'
-          : i < 16
-          ? 'Assigned'
-          : i < 20
-          ? 'Out for Delivery'
-          : i < 34
-          ? 'Delivered'
-          : 'Cancelled';
-      return AgencyOrder(
-        id: 'o${i + 1}',
-        number: 'GA-${(1001 + i).toString()}',
-        customerId: _customers[(i * 7) % _customers.length].id,
-        productId: product.id,
-        quantity: 1 + random.nextInt(2),
-        unitPrice: product.price,
-        status: status,
-        createdAt: now.subtract(
-          Duration(
-            days: i == 20
-                ? 0
-                : i < 7
-                ? i
-                : (i * 4) % 170,
-            hours: i % 11,
-          ),
-        ),
-        notes: i % 6 == 0 ? 'Please call before delivery' : '',
-      );
-    });
-    _inventory = _inventory.map((item) {
-      final booked = _orders
-          .where(
-            (order) =>
-                order.productId == item.productId &&
-                order.status != 'Cancelled' &&
-                order.status != 'Delivered',
-          )
-          .fold<int>(0, (total, order) => total + order.quantity);
-      return Inventory(
-        productId: item.productId,
-        filled: item.filled < booked + 5 ? booked + 5 : item.filled,
-        empty: item.empty,
-        booked: booked,
-        delivered: item.delivered,
-        minimum: item.minimum,
-      );
-    }).toList();
-    _nextOrder = 1041;
-    _deliveries = _orders.where((o) => o.status != 'Cancelled').map((o) {
-      final status = switch (o.status) {
-        'Delivered' => 'Delivered',
-        'Assigned' => 'Assigned',
-        'Out for Delivery' => 'Out for Delivery',
-        _ => 'Pending',
-      };
-      return Delivery(
-        id: 'd${o.id.substring(1)}',
-        orderId: o.id,
-        status: status,
-        staffId: status == 'Pending'
-            ? null
-            : _staff[1 + (int.parse(o.id.substring(1)) % 2)].id,
-        deliveredAt: status == 'Delivered'
-            ? o.createdAt.add(const Duration(hours: 3))
-            : null,
-        notes: '',
-      );
-    }).toList();
-    _payments = [];
-    for (final order in _orders.where((o) => o.status == 'Delivered')) {
-      final ratio = 1 + (int.parse(order.id.substring(1)) % 3);
-      if (ratio == 1) {
-        _payments.add(
-          Payment(
-            id: 'pay-${order.id}',
-            orderId: order.id,
-            amount: order.total,
-            method: 'UPI',
-            date: order.createdAt.add(const Duration(hours: 4)),
-          ),
-        );
-      } else {
-        _payments.add(
-          Payment(
-            id: 'pay-${order.id}',
-            orderId: order.id,
-            amount: order.total / 2,
-            method: 'Cash',
-            date: order.createdAt.add(const Duration(hours: 4)),
-          ),
-        );
-      }
-    }
+    _payments = [
+      Payment(
+        id: 'pay-o2',
+        orderId: delivered.id,
+        amount: delivered.total / 2,
+        method: 'UPI',
+        date: now,
+        reference: 'DEMO-UPI-2',
+      ),
+    ];
     _movements = _inventory
         .map(
           (item) => InventoryMovement(
             id: _uuid.v4(),
             productId: item.productId,
-            kind: 'Opening stock',
+            kind: 'Demo stock balance',
             filledChange: item.filled,
             emptyChange: item.empty,
             bookedChange: item.booked,
-            createdAt: now.subtract(const Duration(days: 30)),
+            damagedChange: item.damaged,
+            createdAt: now,
           ),
         )
         .toList();
@@ -348,6 +231,7 @@ class DummyAgencyRepository implements AgencyRepository {
     if (inventory.available < order.quantity) {
       throw StateError('Not enough filled cylinders available.');
     }
+    _validateOrderPrice(order, product.price);
     final number = 'GA-${_nextOrder++}';
     final saved = AgencyOrder(
       id: _uuid.v4(),
@@ -356,7 +240,9 @@ class DummyAgencyRepository implements AgencyRepository {
       productId: order.productId,
       quantity: order.quantity,
       unitPrice: product.price,
-      status: 'Pending',
+      deliveryCharge: order.deliveryCharge,
+      discount: order.discount,
+      status: 'Ready for Delivery',
       createdAt: DateTime.now(),
       notes: order.notes,
     );
@@ -368,6 +254,7 @@ class DummyAgencyRepository implements AgencyRepository {
       booked: inventory.booked + order.quantity,
       delivered: inventory.delivered,
       minimum: inventory.minimum,
+      damaged: inventory.damaged,
     );
     _movements.insert(
       0,
@@ -384,7 +271,12 @@ class DummyAgencyRepository implements AgencyRepository {
     );
     _deliveries.insert(
       0,
-      Delivery(id: _uuid.v4(), orderId: saved.id, status: 'Pending'),
+      Delivery(
+        id: _uuid.v4(),
+        orderId: saved.id,
+        status: 'Pending',
+        createdAt: saved.createdAt,
+      ),
     );
   }
 
@@ -396,7 +288,10 @@ class DummyAgencyRepository implements AgencyRepository {
       throw StateError('This order can no longer be edited.');
     }
     if (order.status == 'Cancelled' &&
-        _payments.any((payment) => payment.orderId == order.id)) {
+        _payments
+                .where((payment) => payment.orderId == order.id)
+                .fold<double>(0, (total, payment) => total + payment.amount) >
+            0.001) {
       throw StateError('An order with recorded payments cannot be cancelled.');
     }
     if (order.quantity <= 0) {
@@ -421,6 +316,21 @@ class DummyAgencyRepository implements AgencyRepository {
       if (product == null || !product.active) {
         throw StateError('Product is unavailable.');
       }
+      _validateOrderPrice(order, product.price);
+      final paid = _payments
+          .where((payment) => payment.orderId == old.id)
+          .fold<double>(0, (sum, payment) => sum + payment.amount);
+      if (paid > 0 &&
+          (order.customerId != old.customerId ||
+              paid >
+                  product.price * order.quantity +
+                      order.deliveryCharge -
+                      order.discount +
+                      0.001)) {
+        throw StateError(
+          'The booking change conflicts with recorded payments.',
+        );
+      }
     }
     final sameProduct = old.productId == order.productId;
     final available = sameProduct
@@ -437,6 +347,7 @@ class DummyAgencyRepository implements AgencyRepository {
         booked: oldInventory.booked - old.quantity,
         delivered: oldInventory.delivered,
         minimum: oldInventory.minimum,
+        damaged: oldInventory.damaged,
       );
       _movements.insert(
         0,
@@ -460,9 +371,10 @@ class DummyAgencyRepository implements AgencyRepository {
           Delivery(
             id: delivery.id,
             orderId: delivery.orderId,
-            status: 'Failed',
-            staffId: delivery.staffId,
-            notes: 'Order cancelled',
+            status: 'Pending',
+            createdAt: delivery.createdAt,
+            updatedAt: DateTime.now(),
+            notes: delivery.notes,
           ),
           (item) => item.orderId,
         );
@@ -475,6 +387,7 @@ class DummyAgencyRepository implements AgencyRepository {
         booked: oldInventory.booked - old.quantity + order.quantity,
         delivered: oldInventory.delivered,
         minimum: oldInventory.minimum,
+        damaged: oldInventory.damaged,
       );
       if (order.quantity != old.quantity) {
         _movements.insert(
@@ -499,6 +412,7 @@ class DummyAgencyRepository implements AgencyRepository {
         booked: oldInventory.booked - old.quantity,
         delivered: oldInventory.delivered,
         minimum: oldInventory.minimum,
+        damaged: oldInventory.damaged,
       );
       _inventory[_inventory.indexOf(newInventory)] = Inventory(
         productId: newInventory.productId,
@@ -507,6 +421,7 @@ class DummyAgencyRepository implements AgencyRepository {
         booked: newInventory.booked + order.quantity,
         delivered: newInventory.delivered,
         minimum: newInventory.minimum,
+        damaged: newInventory.damaged,
       );
       _movements.insertAll(0, [
         InventoryMovement(
@@ -545,12 +460,36 @@ class DummyAgencyRepository implements AgencyRepository {
               productId: order.productId,
               quantity: order.quantity,
               unitPrice: product.price,
+              deliveryCharge: order.deliveryCharge,
+              discount: order.discount,
               status: order.status,
               createdAt: order.createdAt,
               notes: order.notes,
             ),
       (item) => item.id,
     );
+  }
+
+  void _validateOrderPrice(AgencyOrder order, double price) {
+    if (!order.deliveryCharge.isFinite ||
+        !order.discount.isFinite ||
+        order.deliveryCharge < 0 ||
+        order.discount < 0 ||
+        order.discount > price * order.quantity + order.deliveryCharge) {
+      throw StateError(
+        'Enter valid charges and a discount within the booking total.',
+      );
+    }
+  }
+
+  @override
+  Future<void> advanceBooking(String id, String status) async {
+    final order = _orders.firstWhere((item) => item.id == id);
+    if (!((order.status == 'Pending' && status == 'Confirmed') ||
+        (order.status == 'Confirmed' && status == 'Ready for Delivery'))) {
+      throw StateError('Booking status has changed. Refresh and try again.');
+    }
+    _replace(_orders, order.copyWith(status: status), (item) => item.id);
   }
 
   @override
@@ -574,7 +513,31 @@ class DummyAgencyRepository implements AgencyRepository {
         order.status == 'Delivered' && delivery.status != 'Delivered') {
       throw StateError('This order is not available for delivery.');
     }
-    if (old.status != 'Delivered' && delivery.status == 'Delivered') {
+    if (!const ['Pending', 'Assigned', 'Delivered'].contains(delivery.status)) {
+      throw StateError('Select Pending, Assigned, or Delivered.');
+    }
+    if (delivery.status == 'Delivered' && old.status != 'Assigned') {
+      throw StateError('Assign the delivery before marking it delivered.');
+    }
+    final staffId =
+        delivery.staffId ??
+        (delivery.status == 'Delivered' ? old.staffId : null);
+    if (delivery.status != 'Pending' &&
+        !_staff.any(
+          (member) =>
+              member.id == staffId && member.active && member.role == 'Staff',
+        )) {
+      throw StateError('Select an active delivery person.');
+    }
+    final deliveredQuantity = delivery.deliveredQuantity ?? order.quantity;
+    final returnedEmpty = delivery.returnedEmpty ?? order.quantity;
+    if (delivery.status == 'Delivered') {
+      if (deliveredQuantity != order.quantity ||
+          returnedEmpty < 0 ||
+          delivery.damagedEmpty < 0 ||
+          returnedEmpty + delivery.damagedEmpty > deliveredQuantity) {
+        throw StateError('Record the booked quantity and a valid empty count.');
+      }
       final item = _inventory.firstWhere(
         (entry) => entry.productId == order.productId,
       );
@@ -584,10 +547,11 @@ class DummyAgencyRepository implements AgencyRepository {
       final updated = Inventory(
         productId: item.productId,
         filled: item.filled - order.quantity,
-        empty: item.empty + order.quantity,
+        empty: item.empty + returnedEmpty,
         booked: item.booked - order.quantity,
         delivered: item.delivered + order.quantity,
         minimum: item.minimum,
+        damaged: item.damaged + delivery.damagedEmpty,
       );
       _inventory[_inventory.indexOf(item)] = updated;
       _movements.insert(
@@ -597,7 +561,8 @@ class DummyAgencyRepository implements AgencyRepository {
           productId: item.productId,
           kind: 'Delivery',
           filledChange: -order.quantity,
-          emptyChange: order.quantity,
+          emptyChange: returnedEmpty,
+          damagedChange: delivery.damagedEmpty,
           bookedChange: -order.quantity,
           createdAt: DateTime.now(),
           note: order.number,
@@ -609,12 +574,9 @@ class DummyAgencyRepository implements AgencyRepository {
         (value) => value.id,
       );
     } else {
-      final orderStatus = switch (delivery.status) {
-        'Assigned' => 'Assigned',
-        'Out for Delivery' => 'Out for Delivery',
-        'Failed' => 'Confirmed',
-        _ => 'Pending',
-      };
+      final orderStatus = delivery.status == 'Assigned'
+          ? 'Assigned'
+          : 'Ready for Delivery';
       _replace(
         _orders,
         order.copyWith(status: orderStatus),
@@ -625,16 +587,117 @@ class DummyAgencyRepository implements AgencyRepository {
       id: delivery.id,
       orderId: delivery.orderId,
       status: delivery.status,
-      staffId: delivery.staffId,
+      staffId: delivery.status == 'Pending' ? null : staffId,
       deliveredAt: delivery.status == 'Delivered' ? DateTime.now() : null,
       notes: delivery.notes,
+      createdAt: old.createdAt ?? order.createdAt,
+      updatedAt: DateTime.now(),
+      damagedEmpty: delivery.status == 'Delivered' ? delivery.damagedEmpty : 0,
+      deliveredQuantity: delivery.status == 'Delivered'
+          ? deliveredQuantity
+          : null,
+      returnedEmpty: delivery.status == 'Delivered' ? returnedEmpty : null,
     );
     _replace(_deliveries, saved, (item) => item.orderId);
   }
 
   @override
+  Future<void> recordEmptyReturns(
+    String orderId,
+    int serviceable,
+    int damaged,
+  ) async {
+    final delivery = _deliveries.firstWhere((item) => item.orderId == orderId);
+    final previousGood = delivery.returnedEmpty;
+    final quantity = delivery.deliveredQuantity;
+    if (delivery.status != 'Delivered' ||
+        previousGood == null ||
+        quantity == null ||
+        serviceable < previousGood ||
+        damaged < delivery.damagedEmpty ||
+        serviceable + damaged > quantity) {
+      throw StateError(
+        'Enter valid return totals within the delivered quantity.',
+      );
+    }
+    final extraGood = serviceable - previousGood;
+    final extraDamaged = damaged - delivery.damagedEmpty;
+    if (extraGood == 0 && extraDamaged == 0) return;
+
+    final order = _orders.firstWhere((item) => item.id == orderId);
+    final stock = _inventory.firstWhere(
+      (item) => item.productId == order.productId,
+    );
+    _inventory[_inventory.indexOf(stock)] = Inventory(
+      productId: stock.productId,
+      filled: stock.filled,
+      empty: stock.empty + extraGood,
+      booked: stock.booked,
+      delivered: stock.delivered,
+      minimum: stock.minimum,
+      damaged: stock.damaged + extraDamaged,
+    );
+    _replace(
+      _deliveries,
+      Delivery(
+        id: delivery.id,
+        orderId: orderId,
+        status: delivery.status,
+        staffId: delivery.staffId,
+        deliveredAt: delivery.deliveredAt,
+        createdAt: delivery.createdAt,
+        updatedAt: DateTime.now(),
+        notes: delivery.notes,
+        deliveredQuantity: quantity,
+        returnedEmpty: serviceable,
+        damagedEmpty: damaged,
+      ),
+      (item) => item.orderId,
+    );
+    _movements.insert(
+      0,
+      InventoryMovement(
+        id: _uuid.v4(),
+        productId: order.productId,
+        kind: 'Empty return',
+        filledChange: 0,
+        emptyChange: extraGood,
+        damagedChange: extraDamaged,
+        createdAt: DateTime.now(),
+        note: order.number,
+      ),
+    );
+  }
+
+  @override
   Future<void> recordPayment(Payment payment) async {
     final order = _orders.firstWhere((item) => item.id == payment.orderId);
+    if (payment.refundOf != null) {
+      final original = _payments.firstWhere(
+        (entry) => entry.id == payment.refundOf,
+      );
+      final refunded = _payments
+          .where((entry) => entry.refundOf == original.id)
+          .fold<double>(0, (total, entry) => total - entry.amount);
+      if (original.orderId != order.id ||
+          original.method != payment.method ||
+          original.amount <= 0 ||
+          payment.amount >= 0 ||
+          -payment.amount > original.amount - refunded + 0.001 ||
+          payment.notes.trim().isEmpty) {
+        throw StateError(
+          'Enter a refund within the refundable balance and provide a reason.',
+        );
+      }
+      _payments.insert(0, payment);
+      return;
+    }
+    if (order.status == 'Cancelled') {
+      throw StateError('Order is unavailable for payment.');
+    }
+    if (!_settings.paymentMethods.contains(payment.method)) {
+      throw StateError('This payment method is disabled in Settings.');
+    }
     final paid = _payments
         .where((item) => item.orderId == payment.orderId)
         .fold<double>(0, (total, item) => total + item.amount);
@@ -651,11 +714,34 @@ class DummyAgencyRepository implements AgencyRepository {
     String productId,
     int filledChange,
     int emptyChange,
-    String note,
-  ) async {
+    String note, {
+    String kind = 'Adjustment',
+    int damagedChange = 0,
+  }) async {
+    final valid = switch (kind) {
+      'Adjustment' =>
+        damagedChange == 0 && (filledChange != 0 || emptyChange != 0),
+      'Distributor receipt' =>
+        filledChange >= 0 &&
+            emptyChange >= 0 &&
+            (filledChange > 0 || emptyChange > 0) &&
+            damagedChange == 0,
+      'Exchange' =>
+        filledChange < 0 && emptyChange == -filledChange && damagedChange == 0,
+      'Damage' =>
+        filledChange <= 0 &&
+            emptyChange <= 0 &&
+            damagedChange > 0 &&
+            damagedChange == -filledChange - emptyChange,
+      _ => false,
+    };
+    if (!valid || note.trim().isEmpty) {
+      throw StateError('Invalid stock movement or missing reason.');
+    }
     final item = _inventory.firstWhere((entry) => entry.productId == productId);
     if (item.filled + filledChange < item.booked ||
-        item.empty + emptyChange < 0) {
+        item.empty + emptyChange < 0 ||
+        item.damaged + damagedChange < 0) {
       throw StateError(
         'Adjustment would create negative or already-booked stock.',
       );
@@ -667,13 +753,15 @@ class DummyAgencyRepository implements AgencyRepository {
       booked: item.booked,
       delivered: item.delivered,
       minimum: item.minimum,
+      damaged: item.damaged + damagedChange,
     );
     _movements.insert(
       0,
       InventoryMovement(
         id: _uuid.v4(),
         productId: productId,
-        kind: 'Adjustment',
+        kind: kind,
+        damagedChange: damagedChange,
         filledChange: filledChange,
         emptyChange: emptyChange,
         createdAt: DateTime.now(),

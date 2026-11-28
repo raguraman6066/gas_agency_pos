@@ -11,23 +11,24 @@ class SupabaseAgencyRepository implements AgencyRepository {
   @override
   Future<AgencySnapshot> load() async {
     final results = await Future.wait([
-      _client.from('customers').select().order('created_at', ascending: false),
-      _client.from('products').select().order('name'),
-      _client
-          .from('orders')
-          .select('*, order_items(product_id, quantity, unit_price)')
-          .order('created_at', ascending: false),
-      _client.from('deliveries').select(),
-      _client.from('inventory').select(),
-      _client.from('payments').select().order('payment_date', ascending: false),
-      _client.from('profiles').select().order('full_name'),
-      _client
-          .from('inventory_movements')
-          .select()
-          .order('created_at', ascending: false),
+      _loadRows('customers', sort: 'created_at', ascending: false),
+      _loadRows('products', sort: 'name'),
+      _loadRows(
+        'orders',
+        columns: '*, order_items(product_id, quantity, unit_price)',
+        sort: 'created_at',
+        ascending: false,
+      ),
+      _loadRows('deliveries'),
+      _loadRows('inventory', key: 'product_id'),
+      _loadRows('payments', sort: 'payment_date', ascending: false),
+      _loadRows('profiles', sort: 'full_name'),
+      _loadRows('inventory_movements', sort: 'created_at', ascending: false),
+      _loadRows('agency_settings'),
     ]);
-    final orders = (results[2] as List).map((row) {
-      final order = Map<String, dynamic>.from(row as Map);
+    final settings = results[8].firstOrNull;
+    final orders = results[2].map((row) {
+      final order = Map<String, dynamic>.from(row);
       final item = _firstOrderItem(order.remove('order_items'));
       if (item != null) {
         order['product_id'] = item['product_id'];
@@ -37,31 +38,35 @@ class SupabaseAgencyRepository implements AgencyRepository {
       return AgencyOrder.fromMap(order);
     }).toList();
     return AgencySnapshot(
-      customers: (results[0] as List)
-          .map((row) => Customer.fromMap(Map<String, dynamic>.from(row as Map)))
+      settings: AgencySettings(
+        name: settings?['name'] as String? ?? 'Kathiravan Gas Agency',
+        details: settings?['details'] as String? ?? '',
+        deliveryCharge: (settings?['delivery_charge'] as num?)?.toDouble() ?? 0,
+        paymentMethods:
+            (settings?['payment_methods'] as List?)?.cast<String>() ??
+            AgencySettings.supportedPaymentMethods,
+      ),
+      customers: results[0]
+          .map((row) => Customer.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
-      products: (results[1] as List)
-          .map((row) => Product.fromMap(Map<String, dynamic>.from(row as Map)))
+      products: results[1]
+          .map((row) => Product.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
       orders: orders,
-      deliveries: (results[3] as List)
-          .map((row) => Delivery.fromMap(Map<String, dynamic>.from(row as Map)))
+      deliveries: results[3]
+          .map((row) => Delivery.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
-      inventory: (results[4] as List)
-          .map(
-            (row) => Inventory.fromMap(Map<String, dynamic>.from(row as Map)),
-          )
+      inventory: results[4]
+          .map((row) => Inventory.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
-      payments: (results[5] as List)
-          .map((row) => Payment.fromMap(Map<String, dynamic>.from(row as Map)))
+      payments: results[5]
+          .map((row) => Payment.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
-      staff: (results[6] as List)
-          .map(
-            (row) => StaffMember.fromMap(Map<String, dynamic>.from(row as Map)),
-          )
+      staff: results[6]
+          .map((row) => StaffMember.fromMap(Map<String, dynamic>.from(row)))
           .toList(),
-      movements: (results[7] as List).map((row) {
-        final map = Map<String, dynamic>.from(row as Map);
+      movements: results[7].map((row) {
+        final map = Map<String, dynamic>.from(row);
         return InventoryMovement(
           id: map['id'].toString(),
           productId: map['product_id'].toString(),
@@ -69,11 +74,45 @@ class SupabaseAgencyRepository implements AgencyRepository {
           filledChange: (map['filled_change'] as num).toInt(),
           emptyChange: (map['empty_change'] as num).toInt(),
           bookedChange: (map['booked_change'] as num?)?.toInt() ?? 0,
+          damagedChange: (map['damaged_change'] as num?)?.toInt() ?? 0,
           createdAt: DateTime.parse(map['created_at'].toString()),
           note: map['note'] as String? ?? '',
         );
       }).toList(),
     );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadRows(
+    String table, {
+    String columns = '*',
+    String? sort,
+    String key = 'id',
+    bool ascending = true,
+  }) async {
+    const pageSize = 500;
+    final rows = <Map<String, dynamic>>[];
+    while (true) {
+      final query = _client.from(table).select(columns);
+      final ordered = sort == null
+          ? query.order(key)
+          : query.order(sort, ascending: ascending).order(key);
+      final page = await ordered.range(rows.length, rows.length + pageSize - 1);
+      if (page.isEmpty) return rows;
+      rows.addAll(page);
+    }
+  }
+
+  @override
+  Future<void> saveSettings(AgencySettings settings) async {
+    await _client
+        .from('agency_settings')
+        .update({
+          'name': settings.name,
+          'details': settings.details,
+          'delivery_charge': settings.deliveryCharge,
+          'payment_methods': settings.paymentMethods,
+        })
+        .eq('id', 1);
   }
 
   @override
@@ -94,12 +133,14 @@ class SupabaseAgencyRepository implements AgencyRepository {
   @override
   Future<void> createOrder(AgencyOrder order) async {
     await _client.rpc(
-      'create_order',
+      'create_priced_order',
       params: {
         'p_customer_id': order.customerId,
         'p_product_id': order.productId,
         'p_quantity': order.quantity,
         'p_notes': order.notes,
+        'p_delivery_charge': order.deliveryCharge,
+        'p_discount': order.discount,
       },
     );
   }
@@ -111,14 +152,24 @@ class SupabaseAgencyRepository implements AgencyRepository {
       return;
     }
     await _client.rpc(
-      'edit_order',
+      'edit_priced_order',
       params: {
         'p_order_id': order.id,
         'p_customer_id': order.customerId,
         'p_product_id': order.productId,
         'p_quantity': order.quantity,
         'p_notes': order.notes,
+        'p_delivery_charge': order.deliveryCharge,
+        'p_discount': order.discount,
       },
+    );
+  }
+
+  @override
+  Future<void> advanceBooking(String id, String status) async {
+    await _client.rpc(
+      'advance_booking',
+      params: {'p_order_id': id, 'p_status': status},
     );
   }
 
@@ -128,14 +179,33 @@ class SupabaseAgencyRepository implements AgencyRepository {
   }
 
   @override
+  Future<void> recordEmptyReturns(
+    String orderId,
+    int serviceable,
+    int damaged,
+  ) async {
+    await _client.rpc(
+      'record_empty_returns',
+      params: {
+        'p_order_id': orderId,
+        'p_serviceable': serviceable,
+        'p_damaged': damaged,
+      },
+    );
+  }
+
+  @override
   Future<void> updateDelivery(Delivery delivery) async {
     if (delivery.status == 'Delivered') {
       await _client.rpc(
-        'complete_delivery',
+        'complete_delivery_with_returns',
         params: {
           'p_order_id': delivery.orderId,
           'p_staff_id': delivery.staffId,
           'p_notes': delivery.notes,
+          'p_delivered_quantity': delivery.deliveredQuantity,
+          'p_returned_empty': delivery.returnedEmpty,
+          'p_damaged_empty': delivery.damagedEmpty,
         },
       );
       return;
@@ -153,6 +223,17 @@ class SupabaseAgencyRepository implements AgencyRepository {
 
   @override
   Future<void> recordPayment(Payment payment) async {
+    if (payment.refundOf != null) {
+      await _client.rpc(
+        'record_refund',
+        params: {
+          'p_payment_id': payment.refundOf,
+          'p_amount': -payment.amount,
+          'p_notes': payment.notes,
+        },
+      );
+      return;
+    }
     await _client.rpc(
       'record_payment',
       params: {
@@ -171,15 +252,19 @@ class SupabaseAgencyRepository implements AgencyRepository {
     String productId,
     int filledChange,
     int emptyChange,
-    String note,
-  ) async {
+    String note, {
+    String kind = 'Adjustment',
+    int damagedChange = 0,
+  }) async {
     await _client.rpc(
-      'adjust_inventory',
+      'record_stock_movement',
       params: {
         'p_product_id': productId,
         'p_filled_change': filledChange,
         'p_empty_change': emptyChange,
         'p_note': note,
+        'p_kind': kind,
+        'p_damaged_change': damagedChange,
       },
     );
   }

@@ -6,10 +6,23 @@ String money(num value) =>
 String shortDate(DateTime value) =>
     '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
 
+String bookingStatusLabel(String status) => switch (status) {
+  'Ready for Delivery' || 'Confirmed' => 'Pending',
+  'Out for Delivery' => 'Assigned',
+  _ => status,
+};
+
+String deliveryStatusLabel(String status, {required bool assigned}) {
+  if (status == 'Delivered') return 'Delivered';
+  return assigned && (status == 'Assigned' || status == 'Out for Delivery')
+      ? 'Assigned'
+      : 'Pending';
+}
+
 Color statusColor(String status) => switch (status) {
   'Delivered' || 'Paid' => const Color(0xFF16845B),
   'Out for Delivery' || 'Assigned' || 'Confirmed' => const Color(0xFF1769D2),
-  'Pending' || 'Failed' => const Color(0xFFB36A00),
+  'Pending' || 'Unassigned' || 'Failed' => const Color(0xFFB36A00),
   'Cancelled' => const Color(0xFFB42318),
   _ => const Color(0xFF64748B),
 };
@@ -20,7 +33,8 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = statusColor(status);
+    final label = bookingStatusLabel(status);
+    final color = statusColor(label);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
@@ -28,10 +42,10 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        status,
+        label,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
       ),

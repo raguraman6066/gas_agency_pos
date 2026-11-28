@@ -12,13 +12,7 @@ class AppShell extends ConsumerWidget {
   static const _allItems = [
     _NavItem('Dashboard', '/dashboard', Icons.grid_view_rounded),
     _NavItem('Customers', '/customers', Icons.people_alt_outlined),
-    _NavItem(
-      'Products',
-      '/products',
-      Icons.propane_tank_outlined,
-      adminOnly: true,
-    ),
-    _NavItem('Orders', '/orders', Icons.receipt_long_outlined),
+    _NavItem('Bookings', '/orders', Icons.receipt_long_outlined),
     _NavItem('Deliveries', '/deliveries', Icons.local_shipping_outlined),
     _NavItem(
       'Inventory',
@@ -28,7 +22,7 @@ class AppShell extends ConsumerWidget {
     ),
     _NavItem('Payments', '/payments', Icons.payments_outlined),
     _NavItem('Reports', '/reports', Icons.bar_chart_rounded, adminOnly: true),
-    _NavItem('Staff', '/staff', Icons.badge_outlined, adminOnly: true),
+    _NavItem('Settings', '/settings', Icons.settings_outlined, adminOnly: true),
   ];
 
   @override
@@ -40,14 +34,24 @@ class AppShell extends ConsumerWidget {
         .where((item) => !item.adminOnly || state.currentRole == 'Admin')
         .toList();
     final selected =
-        items.where((item) => item.path == location).firstOrNull ?? items.first;
+        items
+            .where(
+              (item) =>
+                  item.path == location || location.startsWith('${item.path}/'),
+            )
+            .firstOrNull ??
+        items.first;
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
 
     return Scaffold(
       drawer: compact
           ? Drawer(
-              child: _SideNavigation(items: items, selected: selected),
+              child: _SideNavigation(
+                items: items,
+                selected: selected,
+                agencyName: state.settings.name,
+              ),
             )
           : null,
       body: Row(
@@ -55,13 +59,21 @@ class AppShell extends ConsumerWidget {
           if (!compact)
             SizedBox(
               width: 248,
-              child: _SideNavigation(items: items, selected: selected),
+              child: _SideNavigation(
+                items: items,
+                selected: selected,
+                agencyName: state.settings.name,
+              ),
             ),
           Expanded(
             child: Column(
               children: [
                 _TopBar(
-                  title: selected.label,
+                  title: switch (location) {
+                    '/settings/products' => 'Cylinder catalog',
+                    '/settings/staff' => 'Staff accounts',
+                    _ => selected.label,
+                  },
                   userName: state.currentName ?? 'Agency user',
                   role: state.currentRole ?? 'Staff',
                   showMenu: compact,
@@ -106,7 +118,12 @@ class _NavItem {
 }
 
 class _SideNavigation extends StatelessWidget {
-  const _SideNavigation({required this.items, required this.selected});
+  const _SideNavigation({
+    required this.items,
+    required this.selected,
+    required this.agencyName,
+  });
+  final String agencyName;
   final List<_NavItem> items;
   final _NavItem selected;
 
@@ -135,26 +152,30 @@ class _SideNavigation extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 11),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'BlueFlame',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        agencyName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'AGENCY MANAGER',
-                      style: TextStyle(
-                        color: Color(0xFF9FB2C8),
-                        fontSize: 9,
-                        letterSpacing: 1.2,
+                      Text(
+                        'AGENCY MANAGER',
+                        style: const TextStyle(
+                          color: Color(0xFF9FB2C8),
+                          fontSize: 11,
+                          letterSpacing: 1.2,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -165,7 +186,7 @@ class _SideNavigation extends StatelessWidget {
               'WORKSPACE',
               style: TextStyle(
                 color: Color(0xFF8499B2),
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,
               ),
@@ -206,7 +227,7 @@ class _SideNavigation extends StatelessWidget {
                           color: active
                               ? Colors.white
                               : const Color(0xFFD1DBE6),
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: active
                               ? FontWeight.w600
                               : FontWeight.w400,
@@ -235,7 +256,7 @@ class _SideNavigation extends StatelessWidget {
                     'Need a hand?\nYour daily operations, simplified.',
                     style: TextStyle(
                       color: Color(0xFFCCD9E7),
-                      fontSize: 10,
+                      fontSize: 12,
                       height: 1.5,
                     ),
                   ),
@@ -298,7 +319,7 @@ class _TopBar extends ConsumerWidget {
             const SizedBox(width: 8),
             Text(
               _today(),
-              style: const TextStyle(fontSize: 12, color: Color(0xFF66758A)),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF66758A)),
             ),
             const SizedBox(width: 18),
           ],
@@ -331,7 +352,7 @@ class _TopBar extends ConsumerWidget {
                     style: const TextStyle(
                       color: Color(0xFF1769D2),
                       fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                   ),
                 ),
@@ -344,14 +365,14 @@ class _TopBar extends ConsumerWidget {
                       Text(
                         userName,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
                         role,
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 12,
                           color: Color(0xFF7E8A9B),
                         ),
                       ),

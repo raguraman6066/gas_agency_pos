@@ -5,7 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'core/presentation/app_shell.dart';
 import 'core/presentation/login_screen.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/bookings/presentation/booking_form_screen.dart';
+import 'features/bookings/presentation/booking_detail_screen.dart';
 import 'features/operations/presentation/operations_screen.dart';
+import 'features/payments/presentation/payment_entry_screen.dart';
+import 'features/settings/presentation/settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -21,43 +25,65 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/customers',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Customers'),
+            builder: (context, state) => const CustomersScreen(),
           ),
+          GoRoute(path: '/products', redirect: (_, _) => '/settings/products'),
           GoRoute(
-            path: '/products',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Products'),
+            path: '/settings/products',
+            builder: (context, state) => const ProductsScreen(),
           ),
           GoRoute(
             path: '/orders',
+            builder: (context, state) => const BookingsScreen(),
+          ),
+          GoRoute(
+            path: '/orders/new',
+            builder: (context, state) => const BookingFormScreen(),
+          ),
+          GoRoute(
+            path: '/orders/:orderId/edit',
             builder: (context, state) =>
-                const OperationsScreen(module: 'Orders'),
+                BookingFormScreen(orderId: state.pathParameters['orderId']!),
+          ),
+          GoRoute(
+            path: '/orders/:orderId/cancel',
+            builder: (context, state) =>
+                BookingCancelScreen(orderId: state.pathParameters['orderId']!),
+          ),
+          GoRoute(
+            path: '/orders/:orderId/payment',
+            builder: (context, state) =>
+                PaymentEntryScreen(orderId: state.pathParameters['orderId']!),
+          ),
+          GoRoute(
+            path: '/orders/:orderId',
+            builder: (context, state) =>
+                BookingDetailScreen(orderId: state.pathParameters['orderId']!),
           ),
           GoRoute(
             path: '/deliveries',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Deliveries'),
+            builder: (context, state) => const DeliveriesScreen(),
           ),
           GoRoute(
             path: '/inventory',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Inventory'),
+            builder: (context, state) => const InventoryScreen(),
           ),
           GoRoute(
             path: '/payments',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Payments'),
+            builder: (context, state) => const PaymentsScreen(),
           ),
           GoRoute(
             path: '/reports',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Reports'),
+            builder: (context, state) => const ReportsScreen(),
+          ),
+          GoRoute(path: '/staff', redirect: (_, _) => '/settings/staff'),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsScreen(),
           ),
           GoRoute(
-            path: '/staff',
-            builder: (context, state) =>
-                const OperationsScreen(module: 'Staff'),
+            path: '/settings/staff',
+            builder: (context, state) => const StaffScreen(),
           ),
         ],
       ),
@@ -75,7 +101,7 @@ class GasAgencyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'BlueFlame Agency',
+      title: 'Kathiravan Gas Agency',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -106,6 +132,14 @@ class GasAgencyApp extends ConsumerWidget {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: Color(0xFFE7ECF3)),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFB42318)),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFB42318), width: 1.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),

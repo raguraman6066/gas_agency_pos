@@ -14,6 +14,7 @@ final agencyControllerProvider =
 class AgencyState {
   const AgencyState({
     this.loading = true,
+    this.settings = const AgencySettings(),
     this.error,
     this.customerList = const [],
     this.productList = const [],
@@ -29,6 +30,7 @@ class AgencyState {
   });
 
   final bool loading;
+  final AgencySettings settings;
   final String? error;
   final List<Customer> customerList;
   final List<Product> productList;
@@ -54,6 +56,7 @@ class AgencyState {
     bool clearUser = false,
   }) => AgencyState(
     loading: loading ?? this.loading,
+    settings: snapshot?.settings ?? settings,
     error: clearError ? null : error ?? this.error,
     customerList: snapshot?.customers ?? customerList,
     productList: snapshot?.products ?? productList,
@@ -126,6 +129,8 @@ class AgencyController extends Notifier<AgencyState> {
     state = state.copyWith(clearUser: true);
   }
 
+  Future<void> saveSettings(AgencySettings settings) =>
+      _save(() => _repository.saveSettings(settings));
   Future<void> saveCustomer(Customer value) =>
       _save(() => _repository.saveCustomer(value));
   Future<void> saveProduct(Product value) =>
@@ -136,14 +141,38 @@ class AgencyController extends Notifier<AgencyState> {
       _save(() => _repository.createOrder(value));
   Future<void> updateOrder(AgencyOrder value) =>
       _save(() => _repository.updateOrder(value));
+  Future<void> advanceBooking(String id, String status) =>
+      _save(() => _repository.advanceBooking(id, status));
   Future<void> deleteOrder(String id) =>
       _save(() => _repository.deleteOrder(id));
+  Future<void> recordEmptyReturns(
+    String orderId,
+    int serviceable,
+    int damaged,
+  ) => _save(
+    () => _repository.recordEmptyReturns(orderId, serviceable, damaged),
+  );
   Future<void> updateDelivery(Delivery value) =>
       _save(() => _repository.updateDelivery(value));
   Future<void> recordPayment(Payment value) =>
       _save(() => _repository.recordPayment(value));
-  Future<void> adjustInventory(String id, int filled, int empty, String note) =>
-      _save(() => _repository.adjustInventory(id, filled, empty, note));
+  Future<void> adjustInventory(
+    String id,
+    int filled,
+    int empty,
+    String note, {
+    String kind = 'Adjustment',
+    int damagedChange = 0,
+  }) => _save(
+    () => _repository.adjustInventory(
+      id,
+      filled,
+      empty,
+      note,
+      kind: kind,
+      damagedChange: damagedChange,
+    ),
+  );
 
   Future<void> _save(Future<void> Function() action) async {
     await action();

@@ -24,12 +24,23 @@ class DashboardScreen extends ConsumerWidget {
       );
     }
     final now = DateTime.now();
-    bool today(DateTime date) =>
-        date.year == now.year && date.month == now.month && date.day == now.day;
+    bool today(DateTime date) {
+      final local = date.toLocal();
+      return local.year == now.year &&
+          local.month == now.month &&
+          local.day == now.day;
+    }
+
     final todaysOrders = state.orderList
         .where((order) => today(order.createdAt))
         .toList();
     final orderById = {for (final order in state.orderList) order.id: order};
+    final pendingDeliveries = state.deliveryList.where((delivery) {
+      final status = orderById[delivery.orderId]?.status;
+      return status == 'Ready for Delivery' ||
+          status == 'Assigned' ||
+          status == 'Out for Delivery';
+    }).toList();
     final todaysDeliveries = state.deliveryList
         .where(
           (delivery) =>
@@ -60,11 +71,11 @@ class DashboardScreen extends ConsumerWidget {
       0,
       (total, delivery) => total + (orderById[delivery.orderId]?.total ?? 0),
     );
-    final availableFilled = state.inventoryList.fold<int>(
+    final fullStock = state.inventoryList.fold<int>(
       0,
-      (total, item) => total + item.available,
+      (total, item) => total + item.filled,
     );
-    final availableEmpty = state.inventoryList.fold<int>(
+    final emptyStock = state.inventoryList.fold<int>(
       0,
       (total, item) => total + item.empty,
     );
@@ -88,7 +99,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
       _Metric(
         'Pending orders',
-        '${state.orderList.where((item) => item.status == 'Pending' || item.status == 'Confirmed').length}',
+        '${state.orderList.where((item) => item.status == 'Pending' || item.status == 'Confirmed' || item.status == 'Ready for Delivery').length}',
         Icons.pending_actions_outlined,
         const Color(0xFFE18A17),
         'Need attention',
@@ -110,34 +121,22 @@ class DashboardScreen extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.all(width < 600 ? 14 : 24),
       children: [
-        Row(
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Good day 👋',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1C2A3A),
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    'Here is what is happening at your agency today.',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF778397)),
-                  ),
-                ],
+            Text(
+              'Good day 👋',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1C2A3A),
               ),
             ),
-            if (width > 540)
-              FilledButton.icon(
-                onPressed: () => context.go('/orders'),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('New order'),
-              ),
+            SizedBox(height: 5),
+            Text(
+              'Here is what is happening at your agency today.',
+              style: TextStyle(fontSize: 14, color: Color(0xFF778397)),
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -149,18 +148,10 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            mainAxisExtent: 124,
+            mainAxisExtent: 132,
           ),
           itemBuilder: (context, index) => _MetricCard(metric: metrics[index]),
         ),
-        if (width <= 540) ...[
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => context.go('/orders'),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Create a new order'),
-          ),
-        ],
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -181,8 +172,8 @@ class DashboardScreen extends ConsumerWidget {
                     child: _DeliverySummary(
                       orders: state.orderList,
                       pendingPayments: outstanding,
-                      availableFilled: availableFilled,
-                      availableEmpty: availableEmpty,
+                      fullStock: fullStock,
+                      emptyStock: emptyStock,
                     ),
                   ),
                 ],
@@ -198,8 +189,8 @@ class DashboardScreen extends ConsumerWidget {
                 _DeliverySummary(
                   orders: state.orderList,
                   pendingPayments: outstanding,
-                  availableFilled: availableFilled,
-                  availableEmpty: availableEmpty,
+                  fullStock: fullStock,
+                  emptyStock: emptyStock,
                 ),
               ],
             );
@@ -274,6 +265,34 @@ class DashboardScreen extends ConsumerWidget {
             );
           },
         ),
+        const SizedBox(height: 14),
+        SectionCard(
+          title: 'Pending deliveries',
+          trailing: TextButton(
+            onPressed: () => context.go('/deliveries'),
+            child: const Text('View all'),
+          ),
+          child: Column(
+            children: [
+              for (final delivery in pendingDeliveries.take(5))
+                _RecentOrder(
+                  order: orderById[delivery.orderId]!,
+                  customer:
+                      state.customerList
+                          .where(
+                            (customer) =>
+                                customer.id ==
+                                orderById[delivery.orderId]!.customerId,
+                          )
+                          .firstOrNull
+                          ?.name ??
+                      'Customer',
+                ),
+              if (pendingDeliveries.isEmpty)
+                const Text('No pending deliveries.'),
+            ],
+          ),
+        ),
         if (lowStock.isNotEmpty) ...[
           const SizedBox(height: 14),
           SectionCard(
@@ -303,7 +322,7 @@ class DashboardScreen extends ConsumerWidget {
                                     ?.name ??
                                 'Product',
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -312,7 +331,7 @@ class DashboardScreen extends ConsumerWidget {
                           '${item.available} available',
                           style: const TextStyle(
                             color: Color(0xFFB36A00),
-                            fontSize: 11,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -366,7 +385,10 @@ class _MetricCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
-                  style: const TextStyle(fontSize: 9, color: Color(0xFF8692A3)),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF8692A3),
+                  ),
                 ),
               ),
             ],
@@ -386,7 +408,7 @@ class _MetricCard extends StatelessWidget {
               ),
               Text(
                 metric.title,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF778397)),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF778397)),
               ),
             ],
           ),
@@ -445,7 +467,7 @@ class _SalesChart extends StatelessWidget {
                   Text(
                     _month(DateTime(now.year, now.month - 5 + index).month),
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 11,
                       color: Color(0xFF8190A2),
                     ),
                   ),
@@ -509,13 +531,13 @@ class _DeliverySummary extends StatelessWidget {
   const _DeliverySummary({
     required this.orders,
     required this.pendingPayments,
-    required this.availableFilled,
-    required this.availableEmpty,
+    required this.fullStock,
+    required this.emptyStock,
   });
   final List<AgencyOrder> orders;
   final double pendingPayments;
-  final int availableFilled;
-  final int availableEmpty;
+  final int fullStock;
+  final int emptyStock;
 
   @override
   Widget build(BuildContext context) {
@@ -524,7 +546,10 @@ class _DeliverySummary extends StatelessWidget {
         .length;
     final pending = orders
         .where(
-          (order) => order.status == 'Pending' || order.status == 'Confirmed',
+          (order) =>
+              order.status == 'Pending' ||
+              order.status == 'Confirmed' ||
+              order.status == 'Ready for Delivery',
         )
         .length;
     final assigned = orders
@@ -554,7 +579,7 @@ class _DeliverySummary extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           _SummaryLine(
-            label: 'On the way',
+            label: 'Assigned orders',
             value: '$assigned',
             color: const Color(0xFF1769D2),
             percent: active == 0 ? 0 : assigned / active,
@@ -572,8 +597,8 @@ class _DeliverySummary extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _SummaryValue(
-                  label: 'Filled / Empty',
-                  value: '$availableFilled / $availableEmpty',
+                  label: 'Full / Empty',
+                  value: '$fullStock / $emptyStock',
                   icon: Icons.propane_tank_outlined,
                 ),
               ),
@@ -605,12 +630,12 @@ class _SummaryLine extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(fontSize: 11, color: Color(0xFF68778B)),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF68778B)),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -649,13 +674,13 @@ class _SummaryValue extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 9, color: Color(0xFF8290A2)),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF8290A2)),
             ),
             Text(
               value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -691,7 +716,7 @@ class _RecentOrder extends StatelessWidget {
               Text(
                 order.number,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -699,7 +724,7 @@ class _RecentOrder extends StatelessWidget {
                 customer,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF8290A2)),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8290A2)),
               ),
             ],
           ),
@@ -710,7 +735,7 @@ class _RecentOrder extends StatelessWidget {
           children: [
             Text(
               money(order.total),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 4),
             StatusBadge(order.status),
@@ -744,20 +769,20 @@ class _RecentPayment extends StatelessWidget {
               Text(
                 order?.number ?? 'Payment',
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
                 '${payment.method} · ${shortDate(payment.date)}',
-                style: const TextStyle(fontSize: 10, color: Color(0xFF8290A2)),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF8290A2)),
               ),
             ],
           ),
         ),
         Text(
           money(payment.amount),
-          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ],
     ),

@@ -15,13 +15,13 @@ Demo sign-in:
 - Staff: `staff@gasagency.demo`
 - Password: `demo123`
 
-The local repository seeds 30 customers, 5 products, 40 orders, deliveries, stock movements and payments. Changes remain in memory for the current app run and are reset when it restarts.
+The local demo starts with two customers, two products, two bookings and deliveries, two staff profiles, and one sample payment. Changes remain in memory for the current app run and are reset when it restarts.
 
 ## Supabase setup
 
-1. Apply [`supabase/migrations/202611240001_initial_schema.sql`](./supabase/migrations/202611240001_initial_schema.sql) in the Supabase SQL Editor.
+1. Apply the files in [`supabase/migrations`](./supabase/migrations) in filename order, starting with the initial schema.
 2. Create and confirm an Auth user for the administrator. The demo seed currently targets `admin@gmail.com`; edit that email in [`supabase/seed_demo.sql`](./supabase/seed_demo.sql) if using another account.
-3. Run [`supabase/seed_demo.sql`](./supabase/seed_demo.sql) in the SQL Editor. It links the admin Auth account, inserts 30 sample customers, 5 products, 40 orders, 3 assignable staff profiles, deliveries, stock history and manual payments. It can be re-run for the seeded IDs, but resets demo order and stock values; use only in a demo project.
+3. Run [`supabase/seed_demo.sql`](./supabase/seed_demo.sql) in the SQL Editor. This demo-only reset links the admin Auth account and installs the small demo dataset. It trims records from the previous seed, preserves unrelated records and linked staff accounts, and reports any bookings, payments, or stock movements that prevent a safe reset.
 4. Run the app with your project URL and publishable key:
 
    ```powershell
@@ -31,7 +31,7 @@ The local repository seeds 30 customers, 5 products, 40 orders, deliveries, stoc
    ```
 
    The Supabase publishable/anon key is intended for client applications; never put a `service_role` key in Flutter Web.
-5. The seeded staff profiles can be assigned deliveries. To give a staff member login access, also create/confirm their account in Supabase Auth with the same email. A profile alone is not an Auth account.
+5. The seeded staff profile can be assigned deliveries. To give a staff member login access, also create/confirm their account in Supabase Auth with the same email. A profile alone is not an Auth account.
 
 The app selects Supabase only when both compile-time values are set; otherwise it uses the dummy repository. Both implementations share `AgencyRepository`, leaving presentation and state management unchanged. Supabase order creation, editing/cancellation, delivery completion, payments and stock adjustments use database functions so related updates execute atomically. RLS is enabled on all application tables; database permissions are authoritative, with UI restrictions as a usability layer.
 
